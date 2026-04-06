@@ -104,7 +104,6 @@ function Home() {
           <Sparkles className="text-cyan-300" size={36} />
           ListaVip
         </h1>
-        <p className="mt-2 text-cyan-100 opacity-80 text-lg">Eventos Vanguarda</p>
       </header>
 
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">

@@ -59,6 +59,11 @@ func CORSMiddleware() gin.HandlerFunc {
 	}
 }
 
+// @title           Sistema ListaVip API
+// @version         1.0
+// @description     Documentação Interativa de endpoints do backofficce VIP.
+// @host            localhost:8080
+// @BasePath        /
 func main() {
 	initDB()
 

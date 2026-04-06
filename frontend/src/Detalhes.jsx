@@ -177,7 +177,7 @@ function Detalhes() {
       className="flex flex-col items-center min-h-screen py-10 px-4 font-sans"
     >
       <div className="w-full max-w-6xl mb-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-cyan-300 hover:text-cyan-100 transition-colors bg-white bg-opacity-5 hover:bg-opacity-10 px-4 py-2 rounded-xl backdrop-blur-md border border-white border-opacity-10">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-cyan-300 hover:text-cyan-100 transition-colors bg-white bg-opacity-5 hover:bg-opacity-10 px-4 py-2 rounded-xl backdrop-blur-md border border-white border-opacity-10">
           <ArrowLeft size={18} /> Resumo
         </Link>
       </div>
