@@ -44,8 +44,9 @@ function Detalhes() {
     
     const doc = new jsPDF();
     
+    const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(22);
-    doc.text("Sistema ListaVip", 14, 20);
+    doc.text("Sistema ListaVip", pageWidth / 2, 20, { align: "center" });
     
     doc.setFontSize(16);
     doc.text(`Evento: ${data.evento?.nome || "Detalhes"}`, 14, 30);
@@ -232,8 +233,8 @@ function Detalhes() {
                   <IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white opacity-60" size={18} />
                   <input 
                     type="text" 
-                    placeholder="Número do RG / DOC" 
-                    className="glass-input pl-10 shrink-0 font-mono text-sm" 
+                    placeholder="RG ou CPF" 
+                    className="glass-input pl-10 shrink-0 font-mono text-sm tracking-wide" 
                     value={novoConvidado.rg} 
                     onChange={e => setNovoConvidado({...novoConvidado, rg: e.target.value})}
                     disabled={savingConvidado}
