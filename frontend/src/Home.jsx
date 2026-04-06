@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+const API_URL = "http://localhost:8080/api";
+
 function Home() {
   const [eventos, setEventos] = useState([]);
   const [novoEvento, setNovoEvento] = useState({ nome: '', local: '', data: '', horario: '' });
@@ -13,7 +15,7 @@ function Home() {
   const [editingEventoForm, setEditingEventoForm] = useState({ nome: '', local: '', data: '', horario: '' });
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/eventos')
+    fetch(`${API_URL}/eventos`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEventos(data);
@@ -32,15 +34,14 @@ function Home() {
     e.preventDefault();
     e.stopPropagation();
     
-    fetch(`http://localhost:8080/api/eventos/${id}`, {
+    fetch(`${API_URL}/eventos/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editingEventoForm)
     })
       .then(async res => {
          if (!res.ok) {
-           const errData = await res.json();
-           throw new Error(errData.error || "Erro na edição do evento");
+           throw new Error(await res.text());
          }
          return res.json();
       })
@@ -49,20 +50,19 @@ function Home() {
         setEditingEventoId(null);
         toast.success("Evento atualizado com sucesso!");
       })
-      .catch(err => toast.error(err.message));
+      .catch(err => toast.error(`Erro na edição: ${err.message}`));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetch('http://localhost:8080/api/eventos', {
+    fetch(`${API_URL}/eventos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novoEvento)
     })
       .then(async res => {
          if (!res.ok) {
-           const errData = await res.json();
-           throw new Error(errData.error || "Erro ao tentar salvar o evento");
+           throw new Error(await res.text());
          }
          return res.json();
       })
@@ -72,7 +72,7 @@ function Home() {
         toast.success("Evento Agendado com Sucesso! 🚀");
       })
       .catch(err => {
-        toast.error(err.message);
+        toast.error(`Falha: ${err.message}`);
       });
   };
 
@@ -81,13 +81,13 @@ function Home() {
     e.stopPropagation();
     
     if (window.confirm("Atenção! Excluir este evento removerá TODOS os convidados vinculados. Prosseguir?")) {
-      fetch(`http://localhost:8080/api/eventos/${id}`, { method: 'DELETE' })
-        .then(res => {
-          if (!res.ok) throw new Error("Erro na exclusão");
+      fetch(`${API_URL}/eventos/${id}`, { method: 'DELETE' })
+        .then(async res => {
+          if (!res.ok) throw new Error(await res.text());
           setEventos(prev => prev.filter(ev => ev.id !== id));
           toast.success("Evento excluído com sucesso");
         })
-        .catch(err => toast.error(err.message));
+        .catch(err => toast.error(`Erro: ${err.message}`));
     }
   };
 

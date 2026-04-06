@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2, Trash2, Edit2, Save, X, Download } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2, Trash2, Edit2, Save, X, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+const API_URL = "http://localhost:8080/api";
 
 function Detalhes() {
   const { id } = useParams();
@@ -17,8 +21,8 @@ function Detalhes() {
   const [editingVipForm, setEditingVipForm] = useState({ nome: '', rg: '' });
 
   useEffect(() => {
-    fetch(`http://localhost:8080/api/eventos/${id}`)
-      .then(res => {
+    fetch(`${API_URL}/eventos/${id}`)
+      .then(async res => {
         if (!res.ok) throw new Error("Evento não encontrado");
         return res.json();
       })
@@ -32,24 +36,34 @@ function Detalhes() {
       });
   }, [id]);
 
-  const exportCSV = () => {
+  const exportPDF = () => {
     if (!data.convidados || data.convidados.length === 0) {
       toast.error("Nenhum convidado para exportar!");
       return;
     }
-    const headers = ["ID", "Nome", "RG"];
-    const rows = data.convidados.map(v => [v.id, v.nome, v.rg]);
-    let csvContent = headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `evento_${id}_lista_vip.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download Concluído!");
+    const doc = new jsPDF();
+    
+    doc.setFontSize(22);
+    doc.text("Sistema ListaVip", 14, 20);
+    
+    doc.setFontSize(16);
+    doc.text(`Evento: ${data.evento?.nome || "Detalhes"}`, 14, 30);
+    
+    doc.setFontSize(12);
+    doc.text(`Data: ${data.evento?.data || "N/A"}`, 14, 40);
+    doc.text(`Hora: ${data.evento?.horario || "N/A"}`, 14, 48);
+
+    doc.autoTable({
+      startY: 60,
+      head: [['#', 'VIP', 'Credencial (RG)']],
+      body: data.convidados.map((v, i) => [i + 1, v.nome, v.rg]),
+      theme: 'grid',
+      headStyles: { fillColor: [40, 150, 200] }
+    });
+
+    doc.save(`lista_vip_evento_${id}.pdf`);
+    toast.success("PDF Gerado com Sucesso!");
   };
 
   const handleStartEdit = (vip) => {
@@ -58,15 +72,14 @@ function Detalhes() {
   };
 
   const handleSaveEdit = (vipId) => {
-    fetch(`http://localhost:8080/api/convidados/${vipId}`, {
+    fetch(`${API_URL}/convidados/${vipId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...editingVipForm, evento_id: parseInt(id) })
     })
       .then(async res => {
         if (!res.ok) {
-           const errData = await res.json();
-           throw new Error(errData.error || "Erro na edição");
+           throw new Error(await res.text());
         }
         return res.json();
       })
@@ -78,14 +91,14 @@ function Detalhes() {
         setEditingVipId(null);
         toast.success("VIP atualizado com sucesso!");
       })
-      .catch(err => toast.error(err.message));
+      .catch(err => toast.error(`Erro na edição: ${err.message}`));
   };
 
   const handleDeleteConvidado = (convidadoId) => {
     if (window.confirm("Deseja realmente remover este VIP da lista?")) {
-      fetch(`http://localhost:8080/api/convidados/${convidadoId}`, { method: 'DELETE' })
-        .then(res => {
-          if (!res.ok) throw new Error("Erro na exclusão");
+      fetch(`${API_URL}/convidados/${convidadoId}`, { method: 'DELETE' })
+        .then(async res => {
+          if (!res.ok) throw new Error(await res.text());
           setData(prev => ({
             ...prev,
             convidados: prev.convidados.filter(v => v.id !== convidadoId)
@@ -103,16 +116,14 @@ function Detalhes() {
     console.log("[DEBUG] Tentando enviar convidado:", novoConvidado);
     setSavingConvidado(true);
     
-    fetch(`http://localhost:8080/api/eventos/${id}/convidados`, {
+    fetch(`${API_URL}/eventos/${id}/convidados`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novoConvidado)
     })
       .then(async res => {
         if (!res.ok) {
-           const errData = await res.json();
-           console.error("[DEBUG-ERROR] Erro na API (status " + res.status + "):", errData);
-           throw new Error(errData.error || "Erro na API.");
+           throw new Error(await res.text());
         }
         return res.json();
       })
@@ -129,7 +140,7 @@ function Detalhes() {
       .catch(err => {
         console.error("[DEBUG-CRITICAL] Falha Catastrófica ao salvar VIP:", err);
         setSavingConvidado(false);
-        toast.error(err.message);
+        toast.error(`Falha: ${err.message}`);
       });
   };
 
@@ -250,10 +261,10 @@ function Detalhes() {
                 Lista de Convidados VIP
               </h2>
               <button 
-                onClick={exportCSV}
+                onClick={exportPDF}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 bg-opacity-40 hover:bg-opacity-80 border border-indigo-400 rounded-xl text-indigo-100 font-medium transition-all"
               >
-                <Download size={16} /> Exportar CSV
+                <FileText size={16} /> Exportar PDF
               </button>
             </div>
 

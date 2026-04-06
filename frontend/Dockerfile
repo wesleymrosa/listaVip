@@ -1,9 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . .
-# Força a instalação do lucide caso o package.json tenha falhado
-RUN npm install lucide-react
-RUN npm install react-router-dom framer-motion react-hot-toast
+# Força a instalação das dependencias no node bypassando conflitos de versao vite/jspdf
+RUN npm install lucide-react react-router-dom framer-motion react-hot-toast jspdf jspdf-autotable --legacy-peer-deps
 CMD ["npm", "run", "dev"]

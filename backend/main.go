@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,8 +41,22 @@ func initDB() {
 		log.Fatal("Falha ao conectar no banco de dados:", err)
 	}
 
-	// Auto Migration com multiplas tabelas
 	DB.AutoMigrate(&Evento{}, &Convidado{})
+}
+
+// CORSMiddleware resolve os crachs na ponte React -> GO definindo headers agressivamente
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	}
 }
 
 func main() {
@@ -50,12 +64,8 @@ func main() {
 
 	r := gin.Default()
 
-	// Configurar CORS com regras explicitas
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept"},
-	}))
+	// Implementação Nativa e Absoluta de Headers 
+	r.Use(CORSMiddleware())
 
 	r.GET("/api/eventos", func(c *gin.Context) {
 		var eventos []Evento
@@ -64,12 +74,12 @@ func main() {
 	})
 
 	r.GET("/api/eventos/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		var evento Evento
+		idStr := c.Param("id")
+		idUint, _ := strconv.Atoi(idStr)
 		
-		// O Preload puxa os convidados pela chave relacional e mescla na variavel array da struct
-		if err := DB.Preload("Convidados").First(&evento, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+		var evento Evento
+		if err := DB.Preload("Convidados").First(&evento, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Evento não encontrado")
 			return
 		}
 		
@@ -82,7 +92,7 @@ func main() {
 	r.POST("/api/eventos", func(c *gin.Context) {
 		var novoEvento Evento
 		if err := c.ShouldBindJSON(&novoEvento); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+			c.String(http.StatusBadRequest, "Todos os campos são obrigatórios")
 			return
 		}
 		DB.Create(&novoEvento)
@@ -90,99 +100,113 @@ func main() {
 	})
 
 	r.POST("/api/eventos/:id/convidados", func(c *gin.Context) {
-		id := c.Param("id")
-		log.Printf("[DEBUG] Tentativa de salvar convidado no evento parametro id: %s", id)
+		idStr := c.Param("id")
+		idUint, _ := strconv.Atoi(idStr)
 		
 		var evento Evento
-		if err := DB.First(&evento, id).Error; err != nil {
-			log.Printf("[ERROR] Evento ID %s não encontrado no DB", id)
-			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+		if err := DB.First(&evento, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Evento não encontrado")
 			return
 		}
 
 		var novoConvidado Convidado
 		if err := c.ShouldBindJSON(&novoConvidado); err != nil {
-			log.Printf("[ERROR] Falha de sintaxe no JSON Bind: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+			c.String(http.StatusBadRequest, "Todos os campos são obrigatórios")
 			return
 		}
 		
-		log.Printf("[DEBUG] Convertendo convidado recebido formata: Nome=%s, RG=%s", novoConvidado.Nome, novoConvidado.RG)
-		
-		// Garantiu mapear corretamente a FK pelo ID extraido convertida da struct parente
 		novoConvidado.EventoID = evento.ID
-		
 		if err := DB.Create(&novoConvidado).Error; err != nil {
-			log.Printf("[ERROR] Erro ao persistir Convidado no banco de dados: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha na persistência de dados do convidado", "details": err.Error()})
+			c.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 		
-		log.Printf("[DEBUG] Convidado inserido COM SUCESSO: ID Gerado=%d", novoConvidado.ID)
 		c.JSON(http.StatusCreated, novoConvidado)
 	})
 
 	r.DELETE("/api/eventos/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		log.Printf("[DELETE-DEBUG] Tentando remover Evento ID: %s", id)
+		idStr := c.Param("id")
+		log.Printf("ID recebido para ação: [%s]", idStr)
+		idUint, _ := strconv.Atoi(idStr)
 		
 		var evento Evento
-		if err := DB.First(&evento, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+		if err := DB.First(&evento, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Evento não encontrado")
 			return
 		}
 		
-		DB.Unscoped().Delete(&evento)
-		c.JSON(http.StatusNoContent, nil) // 204
+		if err := DB.Unscoped().Delete(&evento, idUint).Error; err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.JSON(http.StatusNoContent, nil) 
 	})
 
 	r.DELETE("/api/convidados/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		log.Printf("[DELETE-DEBUG] Tentando remover Convidado ID: %s", id)
+		idStr := c.Param("id")
+		log.Printf("ID recebido para ação: [%s]", idStr)
+		idUint, _ := strconv.Atoi(idStr)
 		
 		var convidado Convidado
-		if err := DB.First(&convidado, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Convidado não encontrado"})
+		if err := DB.First(&convidado, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Convidado não encontrado")
 			return
 		}
 		
-		DB.Unscoped().Delete(&convidado)
-		c.JSON(http.StatusNoContent, nil) // 204
+		if err := DB.Unscoped().Delete(&convidado, idUint).Error; err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.JSON(http.StatusNoContent, nil)
 	})
 
 	r.PUT("/api/eventos/:id", func(c *gin.Context) {
-		id := c.Param("id")
+		idStr := c.Param("id")
+		log.Printf("ID recebido para ação: [%s]", idStr)
+		idUint, _ := strconv.Atoi(idStr)
 		
 		var evento Evento
-		if err := DB.First(&evento, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+		if err := DB.First(&evento, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Evento não encontrado")
 			return
 		}
 
-		if err := c.ShouldBindJSON(&evento); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+		var dadosNovos Evento
+		if err := c.ShouldBindJSON(&dadosNovos); err != nil {
+			c.String(http.StatusBadRequest, "Falha no parse JSON")
 			return
 		}
 		
-		DB.Save(&evento)
+		if err := DB.Model(&evento).Updates(dadosNovos).Error; err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		
 		c.JSON(http.StatusOK, evento)
 	})
 
 	r.PUT("/api/convidados/:id", func(c *gin.Context) {
-		id := c.Param("id")
+		idStr := c.Param("id")
+		log.Printf("ID recebido para ação: [%s]", idStr)
+		idUint, _ := strconv.Atoi(idStr)
 		
 		var convidado Convidado
-		if err := DB.First(&convidado, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Convidado não encontrado"})
+		if err := DB.First(&convidado, idUint).Error; err != nil {
+			c.String(http.StatusNotFound, "Convidado não encontrado")
 			return
 		}
 
-		if err := c.ShouldBindJSON(&convidado); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+		var dadosNovos Convidado
+		if err := c.ShouldBindJSON(&dadosNovos); err != nil {
+			c.String(http.StatusBadRequest, "Falha no parse JSON")
 			return
 		}
 		
-		DB.Save(&convidado)
+		if err := DB.Model(&convidado).Updates(dadosNovos).Error; err != nil {
+			c.String(http.StatusInternalServerError, err.Error())
+			return
+		}
+		
 		c.JSON(http.StatusOK, convidado)
 	})
 
