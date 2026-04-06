@@ -124,6 +124,7 @@ func main() {
 
 	r.DELETE("/api/eventos/:id", func(c *gin.Context) {
 		id := c.Param("id")
+		log.Printf("[DELETE-DEBUG] Tentando remover Evento ID: %s", id)
 		
 		var evento Evento
 		if err := DB.First(&evento, id).Error; err != nil {
@@ -131,12 +132,13 @@ func main() {
 			return
 		}
 		
-		DB.Delete(&evento)
+		DB.Unscoped().Delete(&evento)
 		c.JSON(http.StatusNoContent, nil) // 204
 	})
 
 	r.DELETE("/api/convidados/:id", func(c *gin.Context) {
 		id := c.Param("id")
+		log.Printf("[DELETE-DEBUG] Tentando remover Convidado ID: %s", id)
 		
 		var convidado Convidado
 		if err := DB.First(&convidado, id).Error; err != nil {
@@ -144,8 +146,44 @@ func main() {
 			return
 		}
 		
-		DB.Delete(&convidado)
+		DB.Unscoped().Delete(&convidado)
 		c.JSON(http.StatusNoContent, nil) // 204
+	})
+
+	r.PUT("/api/eventos/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		
+		var evento Evento
+		if err := DB.First(&evento, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+			return
+		}
+
+		if err := c.ShouldBindJSON(&evento); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+			return
+		}
+		
+		DB.Save(&evento)
+		c.JSON(http.StatusOK, evento)
+	})
+
+	r.PUT("/api/convidados/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		
+		var convidado Convidado
+		if err := DB.First(&convidado, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Convidado não encontrado"})
+			return
+		}
+
+		if err := c.ShouldBindJSON(&convidado); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Todos os campos são obrigatórios"})
+			return
+		}
+		
+		DB.Save(&convidado)
+		c.JSON(http.StatusOK, convidado)
 	})
 
 	port := os.Getenv("PORT")

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2, Trash2, Edit2, Save, X, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -11,6 +11,10 @@ function Detalhes() {
   const [savingConvidado, setSavingConvidado] = useState(false);
   
   const [novoConvidado, setNovoConvidado] = useState({ nome: '', rg: '' });
+
+  // Edição InLine
+  const [editingVipId, setEditingVipId] = useState(null);
+  const [editingVipForm, setEditingVipForm] = useState({ nome: '', rg: '' });
 
   useEffect(() => {
     fetch(`http://localhost:8080/api/eventos/${id}`)
@@ -27,6 +31,55 @@ function Detalhes() {
         setLoading(false);
       });
   }, [id]);
+
+  const exportCSV = () => {
+    if (!data.convidados || data.convidados.length === 0) {
+      toast.error("Nenhum convidado para exportar!");
+      return;
+    }
+    const headers = ["ID", "Nome", "RG"];
+    const rows = data.convidados.map(v => [v.id, v.nome, v.rg]);
+    let csvContent = headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `evento_${id}_lista_vip.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Download Concluído!");
+  };
+
+  const handleStartEdit = (vip) => {
+    setEditingVipId(vip.id);
+    setEditingVipForm({ nome: vip.nome, rg: vip.rg });
+  };
+
+  const handleSaveEdit = (vipId) => {
+    fetch(`http://localhost:8080/api/convidados/${vipId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...editingVipForm, evento_id: parseInt(id) })
+    })
+      .then(async res => {
+        if (!res.ok) {
+           const errData = await res.json();
+           throw new Error(errData.error || "Erro na edição");
+        }
+        return res.json();
+      })
+      .then(updatedVip => {
+        setData(prev => ({
+          ...prev,
+          convidados: prev.convidados.map(v => v.id === vipId ? updatedVip : v)
+        }));
+        setEditingVipId(null);
+        toast.success("VIP atualizado com sucesso!");
+      })
+      .catch(err => toast.error(err.message));
+  };
 
   const handleDeleteConvidado = (convidadoId) => {
     if (window.confirm("Deseja realmente remover este VIP da lista?")) {
@@ -191,10 +244,18 @@ function Detalhes() {
 
           {/* Coluna da Tabela (Right / Bottom) */}
           <div className="lg:col-span-8">
-            <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2 text-white">
-              <UserCheck className="text-green-400" size={24} />
-              Lista de Convidados VIP
-            </h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+              <h2 className="text-2xl font-semibold flex items-center gap-2 text-white">
+                <UserCheck className="text-green-400" size={24} />
+                Lista de Convidados VIP
+              </h2>
+              <button 
+                onClick={exportCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 bg-opacity-40 hover:bg-opacity-80 border border-indigo-400 rounded-xl text-indigo-100 font-medium transition-all"
+              >
+                <Download size={16} /> Exportar CSV
+              </button>
+            </div>
 
             {convidados.length === 0 ? (
               <div className="bg-white bg-opacity-5 border border-white border-opacity-10 rounded-2xl p-10 text-center text-gray-400 flex flex-col items-center justify-center h-48">
@@ -210,26 +271,65 @@ function Detalhes() {
                         <th className="p-4 font-semibold w-12 text-center">#</th>
                         <th className="p-4 font-semibold">Nome Completo</th>
                         <th className="p-4 font-semibold">Credencial (RG)</th>
-                        <th className="p-4 font-semibold w-20 text-center">Ação</th>
+                        <th className="p-4 font-semibold w-24 text-center">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white divide-opacity-5">
                       {convidados.map((vip, i) => (
-                        <tr key={vip.id || i} className="hover:bg-white hover:bg-opacity-5 transition-colors">
-                          <td className="p-4 text-center">
-                            <div className="w-2 h-2 rounded-full bg-green-400 mx-auto animate-pulse"></div>
-                          </td>
-                          <td className="p-4 font-medium text-blue-50">{vip.nome}</td>
-                          <td className="p-4 font-mono text-cyan-400 text-sm tracking-wide opacity-90">{vip.rg}</td>
-                          <td className="p-4 text-center">
-                            <button 
-                              onClick={() => handleDeleteConvidado(vip.id)}
-                              className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500 hover:bg-opacity-20 transition-colors"
-                              title="Remover VIP"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
+                        <tr key={vip.id || i} className="hover:bg-white hover:bg-opacity-5 transition-colors group/row">
+                          {editingVipId === vip.id ? (
+                            <>
+                              <td className="p-4 text-center"><div className="w-2 h-2 rounded-full bg-yellow-400 mx-auto"></div></td>
+                              <td className="p-3">
+                                <input 
+                                  className="w-full bg-black bg-opacity-40 border border-white border-opacity-20 rounded-md px-3 py-1 text-white focus:outline-none focus:border-cyan-400"
+                                  value={editingVipForm.nome}
+                                  onChange={e => setEditingVipForm({...editingVipForm, nome: e.target.value})}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <input 
+                                  className="w-full bg-black bg-opacity-40 border border-white border-opacity-20 rounded-md px-3 py-1 font-mono text-cyan-300 focus:outline-none focus:border-cyan-400"
+                                  value={editingVipForm.rg}
+                                  onChange={e => setEditingVipForm({...editingVipForm, rg: e.target.value})}
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button onClick={() => handleSaveEdit(vip.id)} className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500 hover:bg-opacity-20">
+                                    <Save size={16} />
+                                  </button>
+                                  <button onClick={() => setEditingVipId(null)} className="text-gray-400 hover:text-gray-300 p-2 rounded-lg hover:bg-gray-500 hover:bg-opacity-20">
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="p-4 text-center"><div className="w-2 h-2 rounded-full bg-green-400 mx-auto animate-pulse"></div></td>
+                              <td className="p-4 font-medium text-blue-50">{vip.nome}</td>
+                              <td className="p-4 font-mono text-cyan-400 text-sm tracking-wide opacity-90">{vip.rg}</td>
+                              <td className="p-4">
+                                <div className="flex items-center justify-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => handleStartEdit(vip)}
+                                    className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500 hover:bg-opacity-20 transition-colors"
+                                    title="Editar VIP"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteConvidado(vip.id)}
+                                    className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500 hover:bg-opacity-20 transition-colors"
+                                    title="Remover VIP"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
