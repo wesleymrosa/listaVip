@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, MapPin, Calendar, Clock, PlusCircle, Sparkles } from 'lucide-react';
+import { User, MapPin, Calendar, Clock, PlusCircle, Sparkles, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -39,6 +39,21 @@ function Home() {
       .catch(err => {
         toast.error(err.message);
       });
+  };
+
+  const handleDeleteEvento = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (window.confirm("Atenção! Excluir este evento removerá TODOS os convidados vinculados. Prosseguir?")) {
+      fetch(`http://localhost:8080/api/eventos/${id}`, { method: 'DELETE' })
+        .then(res => {
+          if (!res.ok) throw new Error("Erro na exclusão");
+          setEventos(prev => prev.filter(ev => ev.id !== id));
+          toast.success("Evento excluído com sucesso");
+        })
+        .catch(err => toast.error(err.message));
+    }
   };
 
   return (
@@ -141,7 +156,17 @@ function Home() {
                   <div className="group/card p-5 rounded-2xl bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 transition-all duration-300 relative overflow-hidden flex flex-col justify-between h-full hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/20">
                     <div className="absolute top-0 left-0 w-1 h-full bg-cyan-400 opacity-0 group-hover/card:opacity-100 transition-opacity"></div>
                     
-                    <h3 className="text-xl font-bold text-blue-100 mb-2 truncate" title={ev.nome}>
+                    <div className="absolute top-0 right-0 p-3 opacity-0 group-hover/card:opacity-100 transition-opacity z-10 block">
+                      <button 
+                        onClick={(e) => handleDeleteEvento(e, ev.id)}
+                        className="text-red-400 hover:text-red-300 p-2 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors"
+                        title="Excluir Evento"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-blue-100 mb-2 truncate pr-10" title={ev.nome}>
                       {ev.nome}
                     </h3>
                     

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, UserCheck, Sparkles, User, IdCard, PlusCircle, Loader2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -27,6 +27,21 @@ function Detalhes() {
         setLoading(false);
       });
   }, [id]);
+
+  const handleDeleteConvidado = (convidadoId) => {
+    if (window.confirm("Deseja realmente remover este VIP da lista?")) {
+      fetch(`http://localhost:8080/api/convidados/${convidadoId}`, { method: 'DELETE' })
+        .then(res => {
+          if (!res.ok) throw new Error("Erro na exclusão");
+          setData(prev => ({
+            ...prev,
+            convidados: prev.convidados.filter(v => v.id !== convidadoId)
+          }));
+          toast.success("VIP removido da lista");
+        })
+        .catch(err => toast.error(err.message));
+    }
+  };
 
   const handleAddConvidado = (e) => {
     e.preventDefault();
@@ -195,6 +210,7 @@ function Detalhes() {
                         <th className="p-4 font-semibold w-12 text-center">#</th>
                         <th className="p-4 font-semibold">Nome Completo</th>
                         <th className="p-4 font-semibold">Credencial (RG)</th>
+                        <th className="p-4 font-semibold w-20 text-center">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white divide-opacity-5">
@@ -205,6 +221,15 @@ function Detalhes() {
                           </td>
                           <td className="p-4 font-medium text-blue-50">{vip.nome}</td>
                           <td className="p-4 font-mono text-cyan-400 text-sm tracking-wide opacity-90">{vip.rg}</td>
+                          <td className="p-4 text-center">
+                            <button 
+                              onClick={() => handleDeleteConvidado(vip.id)}
+                              className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500 hover:bg-opacity-20 transition-colors"
+                              title="Remover VIP"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

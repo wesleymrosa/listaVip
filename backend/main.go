@@ -17,7 +17,7 @@ type Evento struct {
 	Local      string      `json:"local" binding:"required"`
 	Data       string      `json:"data"`
 	Horario    string      `json:"horario"`
-	Convidados []Convidado `json:"convidados" gorm:"foreignKey:EventoID"`
+	Convidados []Convidado `json:"convidados" gorm:"foreignKey:EventoID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
 type Convidado struct {
@@ -120,6 +120,32 @@ func main() {
 		
 		log.Printf("[DEBUG] Convidado inserido COM SUCESSO: ID Gerado=%d", novoConvidado.ID)
 		c.JSON(http.StatusCreated, novoConvidado)
+	})
+
+	r.DELETE("/api/eventos/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		
+		var evento Evento
+		if err := DB.First(&evento, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Evento não encontrado"})
+			return
+		}
+		
+		DB.Delete(&evento)
+		c.JSON(http.StatusNoContent, nil) // 204
+	})
+
+	r.DELETE("/api/convidados/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		
+		var convidado Convidado
+		if err := DB.First(&convidado, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Convidado não encontrado"})
+			return
+		}
+		
+		DB.Delete(&convidado)
+		c.JSON(http.StatusNoContent, nil) // 204
 	})
 
 	port := os.Getenv("PORT")
