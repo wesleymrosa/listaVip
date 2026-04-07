@@ -275,11 +275,14 @@ function Detalhes() {
                 <p className="text-sm mt-2 opacity-70">Cadastre os participantes usando o formulário ao lado.</p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white border-opacity-10 bg-black bg-opacity-20 shadow-xl backdrop-blur-md">
-                <div className="overflow-x-auto">
+              <div 
+                className="rounded-2xl border border-white border-opacity-10 bg-black bg-opacity-20 shadow-xl backdrop-blur-md custom-scrollbar relative"
+                style={{ maxHeight: '500px', overflowY: 'auto', display: 'block' }}
+              >
+                <div className="min-w-full">
                   <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white bg-opacity-10 text-cyan-100 text-xs uppercase tracking-wider">
+                    <thead className="sticky top-0 z-20 bg-black bg-opacity-60 backdrop-blur-md shadow-md border-b border-white border-opacity-10">
+                      <tr className="text-cyan-100 text-xs uppercase tracking-wider">
                         <th className="p-4 font-semibold w-12 text-center">#</th>
                         <th className="p-4 font-semibold">Nome Completo</th>
                         <th className="p-4 font-semibold">Credencial (RG)</th>
