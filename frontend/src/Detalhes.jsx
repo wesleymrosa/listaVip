@@ -174,7 +174,7 @@ function Detalhes() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 0.5 }}
-      className="flex flex-col items-center min-h-screen py-10 px-4 font-sans"
+      className="flex flex-col items-center h-screen overflow-y-auto custom-scrollbar pt-10 pb-20 px-4 font-sans"
     >
       <div className="w-full max-w-6xl mb-6">
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-cyan-300 hover:text-cyan-100 transition-colors bg-white bg-opacity-5 hover:bg-opacity-10 px-4 py-2 rounded-xl backdrop-blur-md border border-white border-opacity-10">
@@ -255,7 +255,7 @@ function Detalhes() {
           </div>
 
           {/* Coluna da Tabela (Right / Bottom) */}
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-8 backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-6 shadow-2xl overflow-hidden">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
               <h2 className="text-2xl font-semibold flex items-center gap-2 text-white">
                 <UserCheck className="text-green-400" size={24} />
@@ -263,25 +263,26 @@ function Detalhes() {
               </h2>
               <button 
                 onClick={exportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 bg-opacity-40 hover:bg-opacity-80 border border-indigo-400 rounded-xl text-indigo-100 font-medium transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600/40 hover:bg-indigo-600/80 border border-indigo-400 rounded-xl text-indigo-100 font-medium transition-all"
               >
                 <FileText size={16} /> Exportar PDF
               </button>
             </div>
 
             {convidados.length === 0 ? (
-              <div className="bg-white bg-opacity-5 border border-white border-opacity-10 rounded-2xl p-10 text-center text-gray-400 flex flex-col items-center justify-center h-48">
+              <div className="bg-black/20 border border-white/5 rounded-2xl p-10 text-center text-gray-400 flex flex-col items-center justify-center h-48">
                 <p className="text-lg">A lista de convidados ainda está vazia.</p>
                 <p className="text-sm mt-2 opacity-70">Cadastre os participantes usando o formulário ao lado.</p>
               </div>
             ) : (
-              <div 
-                className="rounded-2xl border border-white border-opacity-10 bg-black bg-opacity-20 shadow-xl backdrop-blur-md custom-scrollbar relative"
-                style={{ maxHeight: '500px', overflowY: 'auto', display: 'block' }}
-              >
-                <div className="min-w-full">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 z-20 bg-black bg-opacity-60 backdrop-blur-md shadow-md border-b border-white border-opacity-10">
+              <div className="rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+                <div 
+                  className="bg-black/20 backdrop-blur-md relative custom-scrollbar block"
+                  style={{ height: '400px', overflowY: 'auto' }}
+                >
+                  <div className="min-w-full">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="sticky top-0 z-20 bg-black bg-opacity-80 backdrop-blur-md shadow-md border-b border-white border-opacity-10">
                       <tr className="text-cyan-100 text-xs uppercase tracking-wider">
                         <th className="p-4 font-semibold w-12 text-center">#</th>
                         <th className="p-4 font-semibold">Nome Completo</th>
@@ -350,6 +351,7 @@ function Detalhes() {
                     </tbody>
                   </table>
                 </div>
+              </div>
               </div>
             )}
           </div>
