@@ -184,7 +184,7 @@ function Home() {
               <p className="text-sm mt-2">Comece adicionando um novo ao lado!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[calc(100vh-320px)] overflow-y-auto scroll-smooth custom-scrollbar pr-2 pb-2">
               {eventos.map((ev, index) => (
                 <div key={ev.id || index} className="group/card relative rounded-2xl bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-lg hover:shadow-cyan-500/20">
                   {editingEventoId === ev.id ? (
